@@ -8,8 +8,8 @@ import subprocess
 
 # mapping = {'classical' : 1, 'weather' : 2, 'stop' : 3, 'joke' : 4}
 
-pat = '(test)(\d+)(.csv)'
-pat_out = '(test)(\d+)(_)(out)'
+pat = '(test)(_)([a-zA-Z]+)(|d+)?'
+pat_out = '(test)(_)([a-zA-Z])+(_)(out)'
 
 def flat(filename,label):
     flatShit = []
@@ -35,12 +35,13 @@ def main():
         smatches = re.findall(pat_out,f)
         if len(matches) > 0 and len(smatches) == 0:
             for m in matches:
-                fname = m[0]+m[1]
-                lbl = 0
+                fname = m[0]+m[1]+m[2]+m[3]
+                lbl = m[2]
+                #print m
                 flat(fname,lbl)
     
     #copy *_out.csv training.csv"
-    os.system('copy test*_out.csv testing.csv')
+    os.system('copy test*_*out.csv testing.csv')
     os.system('Classify.exe testing.csv')
 
 if __name__ == '__main__':

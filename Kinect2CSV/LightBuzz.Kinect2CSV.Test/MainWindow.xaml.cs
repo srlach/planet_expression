@@ -57,6 +57,41 @@ namespace LightBuzz.Kinect2CSV.Test
         List<Tuple<JointType, JointType>> bones;
         List<Pen> bodyColors;
 
+        /// <summary>
+        /// Minimum energy of audio to display (a negative number in dB value, where 0 dB is full scale)
+        /// </summary>
+        private const int MinEnergy = -20;
+
+        /// <summary>
+        /// Will be allocated a buffer to hold a single sub frame of audio data read from audio stream.
+        /// </summary>
+        private readonly byte[] audioBuffer = null;
+
+        /// <summary>
+        /// Sum of squares of audio samples being accumulated to compute the next energy value.
+        /// </summary>
+        private float accumulatedSquareSum;
+
+        /// <summary>
+        /// Number of audio samples accumulated so far to compute the next energy value.
+        /// </summary>
+        private int accumulatedSampleCount;
+
+        /// <summary>
+        /// Number of bytes in each Kinect audio stream sample (32-bit IEEE float).
+        /// </summary>
+        private const int BytesPerSample = sizeof(float);
+
+        /// <summary>
+        /// Number of audio samples represented by each column of pixels in wave bitmap.
+        /// </summary>
+        private const int SamplesPerColumn = 40;
+
+        /// <summary>
+        /// Reader for audio frames
+        /// </summary>
+        private AudioBeamFrameReader reader = null;
+
         int counter = 0;
         public MainWindow()
         {
@@ -113,13 +148,21 @@ namespace LightBuzz.Kinect2CSV.Test
             imageSource = new DrawingImage(drawingGroup);
 
             InitializeComponent();
-        }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
             if (_sensor != null)
             {
                 _sensor.Open();
+
+                // Get its audio source
+                AudioSource audioSource = this._sensor.AudioSource;
+
+                // Allocate 1024 bytes to hold a single audio sub frame. Duration sub frame 
+                // is 16 msec, the sample rate is 16khz, which means 256 samples per sub frame. 
+                // With 4 bytes per sample, that gives us 1024 bytes.
+                this.audioBuffer = new byte[audioSource.SubFrameLengthInBytes];
+
+                // Open the reader for the audio frames
+                this.reader = audioSource.OpenReader();
 
                 _bodies = new Body[_sensor.BodyFrameSource.BodyCount];
 
@@ -130,8 +173,24 @@ namespace LightBuzz.Kinect2CSV.Test
             }
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (this.reader != null)
+            {
+                // Subscribe to new audio frame arrived events
+                this.reader.FrameArrived += this.Reader_FrameArrived;
+            }
+        }
+
         private void Window_Closed(object sender, EventArgs e)
         {
+            if (this.reader != null)
+            {
+                // AudioBeamFrameReader is IDisposable
+                this.reader.Dispose();
+                this.reader = null;
+            }
+
             if (_color != null)
             {
                 _color.Dispose();
@@ -191,6 +250,7 @@ namespace LightBuzz.Kinect2CSV.Test
             }
             else
             {
+                //MessageBox.Show(inputText.Text);
                 _recorder.Start();
                 //System.Diagnostics.Debug.WriteLine("I guess this might be the number of frames: " + counter);
                 button.Content = "Stop";
@@ -295,6 +355,72 @@ namespace LightBuzz.Kinect2CSV.Test
                         }
 
                         this.colorBitmap.Unlock();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the audio frame data arriving from the sensor
+        /// </summary>
+        /// <param name="sender">object sending the event</param>
+        /// <param name="e">event arguments</param>
+        private void Reader_FrameArrived(object sender, AudioBeamFrameArrivedEventArgs e)
+        {
+            AudioBeamFrameReference frameReference = e.FrameReference;
+            AudioBeamFrameList frameList = frameReference.AcquireBeamFrames();
+
+            if (frameList != null)
+            {
+                // AudioBeamFrameList is IDisposable
+                using (frameList)
+                {
+                    // Only one audio beam is supported. Get the sub frame list for this beam
+                    IReadOnlyList<AudioBeamSubFrame> subFrameList = frameList[0].SubFrames;
+
+                    // Loop over all sub frames, extract audio buffer and beam information
+                    foreach (AudioBeamSubFrame subFrame in subFrameList)
+                    {
+                        // Process audio buffer
+                        subFrame.CopyFrameDataToArray(this.audioBuffer);
+
+                        for (int i = 0; i < this.audioBuffer.Length; i += BytesPerSample)
+                        {
+                            // Extract the 32-bit IEEE float sample from the byte array
+                            float audioSample = BitConverter.ToSingle(this.audioBuffer, i);
+
+                            this.accumulatedSquareSum += audioSample * audioSample;
+                            ++this.accumulatedSampleCount;
+
+                            if (this.accumulatedSampleCount < SamplesPerColumn)
+                            {
+                                continue;
+                            }
+
+                            float meanSquare = this.accumulatedSquareSum / SamplesPerColumn;
+
+                            if (meanSquare > 1.0f)
+                            {
+                                // A loud audio source right next to the sensor may result in mean square values
+                                // greater than 1.0. Cap it at 1.0f for display purposes.
+                                meanSquare = 1.0f;
+                            }
+
+                            // Calculate energy in dB, in the range [MinEnergy, 0], where MinEnergy < 0
+                            float energy = MinEnergy;
+
+                            if (meanSquare > 0)
+                            {
+                                energy = (float)(10.0 * Math.Log10(meanSquare));
+                                if (energy > -20)
+                                {
+                                    System.Diagnostics.Debug.Write(energy);
+                                }
+                            }
+
+                            this.accumulatedSquareSum = 0;
+                            this.accumulatedSampleCount = 0;
+                        }
                     }
                 }
             }

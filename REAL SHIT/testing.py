@@ -6,7 +6,7 @@ import sys
 import re
 import subprocess
 
-# mapping = {'classical' : 1, 'weather' : 2, 'stop' : 3, 'joke' : 4}
+mapping = {'classical' : 1, 'weather' : 2, 'stop' : 3, 'joke' : 4}
 
 pat = '(test)(_)([a-zA-Z]+)(|d+)?'
 pat_out = '(test)(_)([a-zA-Z])+(_)(out)'
@@ -26,9 +26,7 @@ def flat(filename,label):
     print ("%s --> %s" % (filename, filename+"_out.csv"))
 
 def main():
-    file_list = []
-    for root,dirs,files in os.walk("."):
-        file_list = files
+    file_list = os.listdir('.')
         
     for f in file_list:
         matches = re.findall(pat,f)
@@ -36,8 +34,7 @@ def main():
         if len(matches) > 0 and len(smatches) == 0:
             for m in matches:
                 fname = m[0]+m[1]+m[2]+m[3]
-                lbl = m[2]
-                #print m
+                lbl = mapping[m[2]]
                 flat(fname,lbl)
     
     #copy *_out.csv training.csv"

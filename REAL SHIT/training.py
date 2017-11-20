@@ -22,14 +22,12 @@ def flat(filename,label):
                 flatShit.append(x[item*multiplier+2][column])
         flatShit.insert(0,label)
         a = numpy.asarray(flatShit)
-    numpy.savetxt(filename+"_out.csv", [a], delimiter=",", fmt="%s")
-    print ("%s --> %s" % (filename, filename+"_out.csv"))
+    numpy.savetxt(filename+"_flat.csv", [a], delimiter=",", fmt="%s")
+    print ("%s --> %s" % (filename, filename+"_flat.csv"))
 
 def main():
-    file_list = []
-    for root,dirs,files in os.walk("."):
-        file_list = files
-        
+    file_list = os.listdir('.')
+    
     for f in file_list:
         matches = re.findall(pat,f)
         smatches = re.findall(pat_out,f)
@@ -40,7 +38,7 @@ def main():
                 flat(fname,lbl)
     
     #copy *_out.csv training.csv"
-    os.system('copy *_out.csv training.csv')
+    os.system('copy *_flat.csv training.csv')
     os.system('Training.exe training.csv')
 
 if __name__ == '__main__':

@@ -18,12 +18,21 @@ namespace LightBuzz.Kinect2CSV
         DataTable bodyData;
         List<KeyValuePair<string, string>> bodyPositions;
         List<string> jointTypes;
+        string joint_vector;
 
         public bool IsRecording { get; protected set; }
 
         public string Folder { get; protected set; }
 
         public string Result { get; protected set; }
+
+        public string Result_
+        {
+            get
+            {
+                return joint_vector;
+            }
+        }
 
         public void Start()
         {
@@ -58,12 +67,12 @@ namespace LightBuzz.Kinect2CSV
                         if (joint != origin)
                         {
                             line.Append(string.Format("{0},,,", joint.JointType.ToString()));
+                            string s_ = string.Format("{0}", joint.JointType.ToString());
+                            jointTypes.Add(s_);
                         }
                         string s = string.Format("{0},,,", joint.JointType.ToString());
-                        string s_ = string.Format("{0}", joint.JointType.ToString());
 
                         bodyData.Columns.Add(s);
-                        jointTypes.Add(s_);
                     }
                     line.AppendLine();
 
@@ -81,12 +90,13 @@ namespace LightBuzz.Kinect2CSV
                     if (joint != origin)
                     {
                         line.Append(string.Format("{0},{1},{2},", joint.Position.X - origin.Position.X, joint.Position.Y - origin.Position.Y, joint.Position.Z - origin.Position.Z));
+                        string s_ = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
+                        bodyPositions.Add(new KeyValuePair<string, string>(joint.JointType.ToString(), s_));
                     }
                     string s = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
-                    string s_ = string.Format("{0},{1},{2}", joint.Position.X, joint.Position.Y, joint.Position.Z);
+
 
                     bodyData.Rows.Add(s);
-                    bodyPositions.Add(new KeyValuePair<string, string>(joint.JointType.ToString(), s_));
                 }
 
                 writer.Write(line);
@@ -99,28 +109,33 @@ namespace LightBuzz.Kinect2CSV
         {
             IsRecording = false;
             _hasEnumeratedJoints = false;
-            System.Diagnostics.Debug.WriteLine("I guess this might be the number of frames: " + _current);
 
             /* try this */
             int n_frames = 10;
             ILookup<string, string> lookup = bodyPositions.ToLookup(kvp => kvp.Key, kvp => kvp.Value);
             int incrementor = _current / n_frames;
+            int pos = 0;
 
-            string joint_vector = "";
+            //string Joint_vector = "";
+            joint_vector = "";
+
             foreach (string joints in jointTypes)
             {
-                for (int i = 0; i < _current; i += incrementor)
+                // get 10 points
+                for (int i = 0; i < 10; i++)
                 {
-                    //joint_vector += lookup[joints].ElementAt(i);
+                    joint_vector += lookup[joints].ElementAt(pos);
+                    pos += incrementor;
                     //System.Diagnostics.Debug.Write(s);
                 }
+                pos = 0;
             }
 
-            string _Result = "Dictionary.csv";
-            using (StreamWriter file = new StreamWriter(_Result))
-            {
-                file.WriteLine(joint_vector);
-            }
+            //string _Result = "Dictionary.csv";
+            //using (StreamWriter file = new StreamWriter(_Result))
+            //{
+            //    file.WriteLine(joint_vector);
+            //}
 
             Result = DateTime.Now.ToString("yyy_MM_dd_HH_mm_ss") + ".csv";
 
@@ -146,6 +161,8 @@ namespace LightBuzz.Kinect2CSV
 
             //bodyData.WriteXml("dtDataxml");
             Directory.Delete(Folder, true);
+            _current = 0;
+            pos = 0;
         }
     }
 }

@@ -1,19 +1,12 @@
 ﻿using Microsoft.Kinect;
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace LightBuzz.Kinect2CSV.Test
 {
@@ -92,7 +85,35 @@ namespace LightBuzz.Kinect2CSV.Test
         /// </summary>
         private AudioBeamFrameReader reader = null;
 
-        int counter = 0;
+        /// <summary>
+        /// Last observed audio beam angle in radians, in the range [-pi/2, +pi/2]
+        /// </summary>
+        private float beamAngle = 0;
+
+        /// <summary>
+        /// Last observed audio beam angle confidence, in the range [0, 1]
+        /// </summary>
+        private float beamAngleConfidence = 0;
+
+        /// <summary>
+        /// Object for locking energy buffer to synchronize threads.
+        /// </summary>
+        private readonly object energyLock = new object();
+
+        //int counter = 0;
+
+        private string trainExePath = "";
+        private string classifyExePath = "";
+
+        List<Definitions> defList;
+        private bool trainStuff = false;
+
+        private float prevLeft = 0;
+        private float prevRight = 0;
+        private int counter = 0;
+
+        CmdExecutor cmd = null;
+
         public MainWindow()
         {
             _sensor = KinectSensor.GetDefault();
@@ -149,6 +170,10 @@ namespace LightBuzz.Kinect2CSV.Test
 
             InitializeComponent();
 
+            cmd = new CmdExecutor();
+            // set IsAvailableChanged event notifier
+            this._sensor.IsAvailableChanged += this.Sensor_IsAvailableChanged;
+
             if (_sensor != null)
             {
                 _sensor.Open();
@@ -180,6 +205,20 @@ namespace LightBuzz.Kinect2CSV.Test
                 // Subscribe to new audio frame arrived events
                 this.reader.FrameArrived += this.Reader_FrameArrived;
             }
+
+            //List<string[]> rows = File.ReadAllLines("Dictionary.csv").Select(x => x.Split(',')).ToList();
+            Definitions d = new Definitions();
+            IEnumerable<Definitions> enumerable = d.ReadCSV(@"C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2CSV.Test\bin\Debug\definitions.csv");
+            ListViewDef.ItemsSource = enumerable;
+
+            webBrowser.Navigate("http://alexa.amazon.com");
+
+            defList = new List<Definitions>();
+            defList = enumerable.ToList();
+            var value = defList.First(item => item.Gesture == "lol").ID;
+            //System.Diagnostics.Debug.Write(value);
+
+            recordStatusText.Text = "Not recording";
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -228,31 +267,76 @@ namespace LightBuzz.Kinect2CSV.Test
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Button button = sender as Button;
+            System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
 
             if (_recorder.IsRecording)
             {
                 _recorder.Stop();
 
                 button.Content = "Start";
+                inputText.IsReadOnly = false;
 
-                SaveFileDialog dialog = new SaveFileDialog
+                var confirmResult = System.Windows.MessageBox.Show("Add recorded data to dictionary?", "Confirm add", MessageBoxButton.YesNo);
+
+                if (confirmResult == MessageBoxResult.Yes)
                 {
-                    Filter = "Excel files|*.csv"
-                };
+                    using (StreamWriter file = new StreamWriter("Dictionary.csv", true, Encoding.UTF8))
+                    {
+                        if (!string.IsNullOrEmpty(inputText.Text))
+                        {
+                            var gest = defList.FirstOrDefault(item => item.Gesture == inputText.Text.ToString());
 
-                dialog.ShowDialog();
+                            if (gest != null)
+                            {
+                                string s = string.Format("{0},", gest.ID.ToString());
+                                s += _recorder.Result_;
+                                file.WriteLine(s);
+                            }
+                            else
+                            {
+                                Random rnd = new Random();
+                                int rand = rnd.Next(0, 500000);
+                                Definitions d = new Definitions(rand, inputText.Text.ToString());
+                                defList.Add(d);
 
-                if (!string.IsNullOrWhiteSpace(dialog.FileName))
-                {
-                    System.IO.File.Copy(_recorder.Result, dialog.FileName);
+                                using (StreamWriter f = new StreamWriter("definitions.csv", true, Encoding.UTF8))
+                                {
+                                    string str = string.Format("{0},{1}", d.ID, d.Gesture);
+                                    f.WriteLine(str);
+                                }
+
+                                string s = string.Format("{0},", rand.ToString());
+                                s += _recorder.Result_;
+                                file.WriteLine(s);
+                            }
+
+                        }
+                        else
+                        {
+                            System.Windows.MessageBox.Show("Please input a name for the recorded gesture", "Oops");
+                        }
+                        //file.WriteLine(_recorder.Result_);
+                    }
                 }
+
+                //SaveFileDialog dialog = new SaveFileDialog
+                //{
+                //    Filter = "Excel files|*.csv"
+                //};
+
+                //dialog.ShowDialog();
+
+                //if (!string.IsNullOrWhiteSpace(dialog.FileName))
+                //{
+                //    System.IO.File.Copy(_recorder.Result, dialog.FileName);
+                //}
             }
             else
             {
                 //MessageBox.Show(inputText.Text);
                 _recorder.Start();
-                //System.Diagnostics.Debug.WriteLine("I guess this might be the number of frames: " + counter);
+                inputText.IsReadOnly = true;
+
                 button.Content = "Stop";
             }
         }
@@ -272,7 +356,7 @@ namespace LightBuzz.Kinect2CSV.Test
                     if (body != null)
                     {
                         _recorder.Update(body);
-                        counter++;
+                        //counter++;
                         dataReceived = true;
                     }
                 }
@@ -283,7 +367,7 @@ namespace LightBuzz.Kinect2CSV.Test
                 using (DrawingContext dc = this.drawingGroup.Open())
                 {
                     // Draw a transparent background to set the render size
-                    dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, this.displayWidth, this.displayHeight));
+                    dc.DrawRectangle(Brushes.Gray, null, new Rect(0.0, 0.0, this.displayWidth, this.displayHeight));
 
                     int penIndex = 0;
 
@@ -297,6 +381,79 @@ namespace LightBuzz.Kinect2CSV.Test
 
                         // convert the joint points to depth (display) space
                         Dictionary<JointType, Point> jointPoints = new Dictionary<JointType, Point>();
+
+                        float hip = body.Joints[JointType.HipLeft].Position.Y;
+                        float leftHand = body.Joints[JointType.HandLeft].Position.Y;
+                        float rightHand = body.Joints[JointType.HandRight].Position.Y;
+
+                        if (_recorder.IsRecording && trainStuff)
+                        {
+                            //System.Diagnostics.Debug.Write(counter + "\n");
+
+                            // check to see if there has been any changes in 1 second
+                            if (counter == 60)
+                            {
+                                counter = 0;
+                                float leftDiff = (Math.Abs(prevLeft - leftHand) / ((prevLeft + leftHand) / 2)) * 100; 
+                                float rightDiff = (Math.Abs(prevRight - rightHand) / ((prevRight + rightHand) / 2)) * 100;
+
+                                System.Diagnostics.Debug.Write("prevLeft: " + prevLeft + " leftHand: " + leftHand + "\n");
+                                System.Diagnostics.Debug.Write("leftDiff: " + leftDiff + " rightDiff: " + rightDiff + "\n\n");
+
+                                // save data to reference 1 second later
+                                prevLeft = leftHand;
+                                prevRight = rightHand;
+
+                                // left/right hand has 1.2% difference than the position of the hands 60 frames ago
+                                if (leftDiff < 1.2 && rightDiff < 1.2)
+                                {
+                                    System.Diagnostics.Debug.Write("Gesture end detected.\n");
+
+                                    _recorder.Stop();
+                                    using (StreamWriter file = new StreamWriter("Tester.csv", true, Encoding.UTF8))
+                                    {
+                                        Random rnd = new Random();
+                                        int rand = rnd.Next(0, 500);
+
+                                        string s = string.Format("{0},", rand.ToString());
+                                        s += _recorder.Result_;
+                                        file.WriteLine(s);
+                                    }
+
+                                    _recorder.Start();
+                                }
+                            }
+
+                            counter++;
+
+                            if (leftHand < hip && rightHand < hip)
+                            {
+                                counter = 0;
+
+                                _recorder.Stop();
+
+                                recordStatusText.Foreground = new SolidColorBrush(Colors.Black);
+                                recordStatusText.Text = "Not recording";
+
+                                if (classifyExe.IsChecked)
+                                {
+                                    // recognize the gesture
+                                    cmd.Classify(classifyExePath, "Tester.csv");
+                                }
+                                else
+                                {
+                                    //System.Windows.MessageBox.Show("Please set target executables under Options > Set \"*\" target executable", "Oops");
+                                }
+
+                                // delete the file since we are done with it
+                                if (File.Exists("Tester.csv"))
+                                {
+                                    File.Delete("Tester.csv");
+                                }
+                                trainStuff = false;
+                                System.Diagnostics.Debug.Write("Training has been stopped.\n");
+                            }
+                        }
 
                         foreach (JointType jointType in joints.Keys)
                         {
@@ -381,6 +538,18 @@ namespace LightBuzz.Kinect2CSV.Test
                     // Loop over all sub frames, extract audio buffer and beam information
                     foreach (AudioBeamSubFrame subFrame in subFrameList)
                     {
+                        // Check if beam angle and/or confidence have changed
+
+                        if (subFrame.BeamAngle != this.beamAngle)
+                        {
+                            this.beamAngle = subFrame.BeamAngle;
+                        }
+
+                        if (subFrame.BeamAngleConfidence != this.beamAngleConfidence)
+                        {
+                            this.beamAngleConfidence = subFrame.BeamAngleConfidence;
+                        }
+
                         // Process audio buffer
                         subFrame.CopyFrameDataToArray(this.audioBuffer);
 
@@ -409,12 +578,40 @@ namespace LightBuzz.Kinect2CSV.Test
                             // Calculate energy in dB, in the range [MinEnergy, 0], where MinEnergy < 0
                             float energy = MinEnergy;
 
+                            // Convert the beam angle from radians to degrees (rad * 180) / pi
+                            float beamAngleInDeg = this.beamAngle * 180.0f / (float)Math.PI;
                             if (meanSquare > 0)
                             {
                                 energy = (float)(10.0 * Math.Log10(meanSquare));
                                 if (energy > -20)
                                 {
-                                    System.Diagnostics.Debug.Write(energy);
+                                    if (beamAngleInDeg < 30 && beamAngleInDeg > -30)
+                                    {
+                                        lock (energyLock)
+                                        {
+                                            if (!(trainStuff || _recorder.IsRecording))
+                                            {
+                                                System.Diagnostics.Debug.Write("Training has been started.\n");
+
+                                                trainStuff = true;
+                                                _recorder.Start();
+
+                                                recordStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                                                recordStatusText.Text = "Recording...";
+                                            }
+                                            //if (!theChoosenOne)
+                                            //{
+                                            //    shittyFunction();
+                                            //    theChoosenOne = true;
+                                            //}
+                                            //System.Diagnostics.Debug.Write("hi");
+                                            //if (!_recorder.IsRecording)
+                                            //{
+                                            //    //_recorder.Start();
+
+                                            //}
+                                        }
+                                    }
                                 }
                             }
 
@@ -562,6 +759,60 @@ namespace LightBuzz.Kinect2CSV.Test
             {
                 drawingContext.DrawEllipse(drawBrush, null, jointPoints[jointType], JointThickness, JointThickness);
             }
+        }
+
+        private void MenuItem_classifyClick(object sender, RoutedEventArgs e)
+        {
+            using (System.Windows.Forms.FileDialog filedialog = new System.Windows.Forms.OpenFileDialog())
+            {
+                filedialog.Filter = "EXE files (*.exe)|*.exe";
+                if (System.Windows.Forms.DialogResult.OK == filedialog.ShowDialog())
+                {
+                    //string filename = filedialog.FileName;
+                    //System.Diagnostics.Debug.Write(filename);
+                    classifyExePath = filedialog.FileName;
+                    classifyExe.IsChecked = true;
+                }
+            }
+        }
+
+        private void MenuItem_trainClick(object sender, RoutedEventArgs e)
+        {
+            using (System.Windows.Forms.FileDialog filedialog = new System.Windows.Forms.OpenFileDialog())
+            {
+                filedialog.Filter = "EXE files (*.exe)|*.exe";
+                if (System.Windows.Forms.DialogResult.OK == filedialog.ShowDialog())
+                {
+                    //string filename = filedialog.FileName;
+                    //System.Diagnostics.Debug.Write(filename);
+                    trainExePath = filedialog.FileName;
+                    trainExe.IsChecked = true;
+                }
+            }
+        }
+
+        private void Button_trainClick(object sender, RoutedEventArgs e)
+        {
+            if (trainExe.IsChecked)
+            {
+                cmd.Train(trainExePath);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("Please set target executables under Options > Set \"*\" target executable", "Oops");
+            }
+        }
+
+        /// <summary>
+        /// Handles the event which the sensor becomes unavailable (E.g. paused, closed, unplugged).
+        /// </summary>
+        /// <param name="sender">object sending the event</param>
+        /// <param name="e">event arguments</param>
+        private void Sensor_IsAvailableChanged(object sender, IsAvailableChangedEventArgs e)
+        {
+            // on failure, set the status text
+            this.statusBarText.Text = this._sensor.IsAvailable ? Properties.Resources.RunningStatusText
+                                                            : Properties.Resources.SensorNotAvailableStatusText;
         }
     }
 }

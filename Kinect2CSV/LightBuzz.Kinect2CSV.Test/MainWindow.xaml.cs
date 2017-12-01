@@ -7,6 +7,8 @@ using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Speech.Synthesis;
+using System.Collections.ObjectModel;
 
 namespace LightBuzz.Kinect2CSV.Test
 {
@@ -114,6 +116,9 @@ namespace LightBuzz.Kinect2CSV.Test
 
         CmdExecutor cmd = null;
 
+        ObservableCollection<Definitions> def;
+        SpeechSynthesizer synthesizer = null;
+
         public MainWindow()
         {
             _sensor = KinectSensor.GetDefault();
@@ -208,16 +213,25 @@ namespace LightBuzz.Kinect2CSV.Test
 
             //List<string[]> rows = File.ReadAllLines("Dictionary.csv").Select(x => x.Split(',')).ToList();
             Definitions d = new Definitions();
-            IEnumerable<Definitions> enumerable = d.ReadCSV(@"C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2CSV.Test\bin\Debug\definitions.csv");
-            ListViewDef.ItemsSource = enumerable;
+            if (d.ReadCSV("Definitions.csv") != null)
+            {
+                def = new ObservableCollection<Definitions>(d.ReadCSV("Definitions.csv"));
+            }
+            else def = new ObservableCollection<Definitions>();
+
+            ListViewDef.ItemsSource = def;
 
             webBrowser.Navigate("http://alexa.amazon.com");
 
             defList = new List<Definitions>();
-            defList = enumerable.ToList();
-            var value = defList.First(item => item.Gesture == "lol").ID;
+            if (def != null)
+            {
+                defList = def.ToList();
+            }
+            //var value = defList.First(item => item.Gesture == "lol").ID;
             //System.Diagnostics.Debug.Write(value);
 
+            synthesizer = new SpeechSynthesizer();
             recordStatusText.Text = "Not recording";
         }
 
@@ -290,23 +304,32 @@ namespace LightBuzz.Kinect2CSV.Test
                             {
                                 string s = string.Format("{0},", gest.ID.ToString());
                                 s += _recorder.Result_;
+                                s = s.Remove(s.LastIndexOf(","));
                                 file.WriteLine(s);
                             }
                             else
                             {
-                                Random rnd = new Random();
-                                int rand = rnd.Next(0, 500000);
-                                Definitions d = new Definitions(rand, inputText.Text.ToString());
+                                //Random rnd = new Random();
+                                //int rand = rnd.Next(0, 500000);
+
+                                string id_ = DateTime.Now.ToString("MMddHHmmss");
+
+                                Int64 uniqueID = Int64.Parse(id_) % 100000;
+
+                                Definitions d = new Definitions(uniqueID, inputText.Text.ToString());
                                 defList.Add(d);
 
-                                using (StreamWriter f = new StreamWriter("definitions.csv", true, Encoding.UTF8))
+                                using (StreamWriter f = new StreamWriter("Definitions.csv", true, Encoding.UTF8))
                                 {
                                     string str = string.Format("{0},{1}", d.ID, d.Gesture);
                                     f.WriteLine(str);
                                 }
 
-                                string s = string.Format("{0},", rand.ToString());
+                                def.Add(d);
+
+                                string s = string.Format("{0},", uniqueID.ToString());
                                 s += _recorder.Result_;
+                                s = s.Remove(s.LastIndexOf(","));
                                 file.WriteLine(s);
                             }
 
@@ -391,7 +414,7 @@ namespace LightBuzz.Kinect2CSV.Test
                             //System.Diagnostics.Debug.Write(counter + "\n");
 
                             // check to see if there has been any changes in 1 second
-                            if (counter == 60)
+                            if (counter == 150)
                             {
                                 counter = 0;
                                 float leftDiff = (Math.Abs(prevLeft - leftHand) / ((prevLeft + leftHand) / 2)) * 100; 
@@ -405,32 +428,51 @@ namespace LightBuzz.Kinect2CSV.Test
                                 prevRight = rightHand;
 
                                 // left/right hand has 1.2% difference than the position of the hands 60 frames ago
-                                if (leftDiff < 1.2 && rightDiff < 1.2)
-                                {
-                                    System.Diagnostics.Debug.Write("Gesture end detected.\n");
+                                //if (leftDiff < 10 && rightDiff < 10)
+                                //{
+                                //    System.Diagnostics.Debug.Write("Gesture end detected.\n");
 
-                                    _recorder.Stop();
-                                    using (StreamWriter file = new StreamWriter("Tester.csv", true, Encoding.UTF8))
-                                    {
-                                        Random rnd = new Random();
-                                        int rand = rnd.Next(0, 500);
+                                //    _recorder.Stop();
+                                //    using (StreamWriter file = new StreamWriter("Tester.csv", true, Encoding.UTF8))
+                                //    {
+                                //        Random rnd = new Random();
+                                //        int rand = rnd.Next(0, 500);
 
-                                        string s = string.Format("{0},", rand.ToString());
-                                        s += _recorder.Result_;
-                                        file.WriteLine(s);
-                                    }
+                                //        string s = string.Format("{0},", rand.ToString());
+                                //        s += _recorder.Result_;
 
-                                    _recorder.Start();
-                                }
+                                //        s = s.Remove(s.LastIndexOf(","));
+
+                                //        //System.Diagnostics.Debug.Write(s + "\n\n");
+                                //        file.WriteLine(s);
+                                //    }
+
+                                //    _recorder.Start();
+                                //}
                             }
 
                             counter++;
 
                             if (leftHand < hip && rightHand < hip)
                             {
+                                System.Diagnostics.Debug.Write("Training has been stopped.\n");
                                 counter = 0;
 
                                 _recorder.Stop();
+
+                                using (StreamWriter file = new StreamWriter("Tester.csv", true, Encoding.UTF8))
+                                {
+                                    Random rnd = new Random();
+                                    int rand = rnd.Next(0, 500);
+
+                                    string s = string.Format("{0},", rand.ToString());
+                                    s += _recorder.Result_;
+
+                                    s = s.Remove(s.LastIndexOf(","));
+
+                                    //System.Diagnostics.Debug.Write(s + "\n\n");
+                                    file.WriteLine(s);
+                                }
 
                                 recordStatusText.Foreground = new SolidColorBrush(Colors.Black);
                                 recordStatusText.Text = "Not recording";
@@ -439,6 +481,24 @@ namespace LightBuzz.Kinect2CSV.Test
                                 {
                                     // recognize the gesture
                                     cmd.Classify(classifyExePath, "Tester.csv");
+                                    List<Int64> list = cmd.Result;
+
+                                    string query = "Hey Alexa, ";
+
+                                    foreach (var elem in list)
+                                    {
+                                        var value = defList.FirstOrDefault(item => item.ID == elem);
+
+                                        if (value != null)
+                                        {
+                                            query += value.Gesture;
+                                        }
+                                    }
+                                    inputQuery.Text = query;
+
+                                    System.Diagnostics.Debug.Write(query + "\n");
+
+                                    synthesizer.SpeakAsync(query);
                                 }
                                 else
                                 {
@@ -448,10 +508,9 @@ namespace LightBuzz.Kinect2CSV.Test
                                 // delete the file since we are done with it
                                 if (File.Exists("Tester.csv"))
                                 {
-                                    File.Delete("Tester.csv");
+                                    //File.Delete("Tester.csv");
                                 }
                                 trainStuff = false;
-                                System.Diagnostics.Debug.Write("Training has been stopped.\n");
                             }
                         }
 
@@ -583,11 +642,11 @@ namespace LightBuzz.Kinect2CSV.Test
                             if (meanSquare > 0)
                             {
                                 energy = (float)(10.0 * Math.Log10(meanSquare));
-                                if (energy > -20)
+                                if (energy > -10)
                                 {
-                                    if (beamAngleInDeg < 30 && beamAngleInDeg > -30)
+                                    if (beamAngleInDeg < 10 && beamAngleInDeg > -10)
                                     {
-                                        lock (energyLock)
+                                        lock (this.energyLock)
                                         {
                                             if (!(trainStuff || _recorder.IsRecording))
                                             {
@@ -813,6 +872,21 @@ namespace LightBuzz.Kinect2CSV.Test
             // on failure, set the status text
             this.statusBarText.Text = this._sensor.IsAvailable ? Properties.Resources.RunningStatusText
                                                             : Properties.Resources.SensorNotAvailableStatusText;
+        }
+
+
+        private void Button_classifyClick(object sender, RoutedEventArgs e)
+        {
+            if (!(trainStuff || _recorder.IsRecording))
+            {
+                //System.Diagnostics.Debug.Write("Training has been started.\n");
+
+                trainStuff = true;
+                _recorder.Start();
+
+                recordStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                recordStatusText.Text = "Recording...";
+            }
         }
     }
 }

@@ -18,7 +18,22 @@ namespace LightBuzz.Kinect2CSV
         DataTable bodyData;
         List<KeyValuePair<string, string>> bodyPositions;
         List<string> jointTypes;
-        string joint_vector;
+
+        List<JointType> omitJoints = new List<JointType>
+        {
+            JointType.KneeLeft,
+            JointType.KneeRight,
+            JointType.HipLeft,
+            JointType.HipRight,
+            JointType.AnkleLeft,
+            JointType.AnkleRight,
+            JointType.AnkleLeft,
+            JointType.FootLeft,
+            JointType.FootRight
+        };
+
+        private string joint_vector;
+
 
         public bool IsRecording { get; protected set; }
 
@@ -64,21 +79,27 @@ namespace LightBuzz.Kinect2CSV
                 {
                     foreach (var joint in body.Joints.Values)
                     {
-                        if (joint != origin)
+                        if (!omitJoints.Contains(joint.JointType))
                         {
-                            line.Append(string.Format("{0},,,", joint.JointType.ToString()));
-                            string s_ = string.Format("{0}", joint.JointType.ToString());
-                            jointTypes.Add(s_);
-                        }
-                        string s = string.Format("{0},,,", joint.JointType.ToString());
+                            if (joint != origin)
+                            {
+                                line.Append(string.Format("{0},,,", joint.JointType.ToString()));
+                                string s_ = string.Format("{0}", joint.JointType.ToString());
+                                jointTypes.Add(s_);
+                            }
+                            string s = string.Format("{0},,,", joint.JointType.ToString());
 
-                        bodyData.Columns.Add(s);
+                            bodyData.Columns.Add(s);
+                        }
                     }
                     line.AppendLine();
 
                     foreach (var joint in body.Joints.Values)
                     {
-                        line.Append("X,Y,Z,");
+                        if (!omitJoints.Contains(joint.JointType))
+                        {
+                            line.Append("X,Y,Z,");
+                        }
                     }
                     line.AppendLine();
 
@@ -87,16 +108,19 @@ namespace LightBuzz.Kinect2CSV
 
                 foreach (var joint in body.Joints.Values)
                 {
-                    if (joint != origin)
+                    if (!omitJoints.Contains(joint.JointType))
                     {
-                        line.Append(string.Format("{0},{1},{2},", joint.Position.X - origin.Position.X, joint.Position.Y - origin.Position.Y, joint.Position.Z - origin.Position.Z));
-                        string s_ = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
-                        bodyPositions.Add(new KeyValuePair<string, string>(joint.JointType.ToString(), s_));
+                        if (joint != origin)
+                        {
+                            line.Append(string.Format("{0},{1},{2},", joint.Position.X - origin.Position.X, joint.Position.Y - origin.Position.Y, joint.Position.Z - origin.Position.Z));
+                            string s_ = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
+                            bodyPositions.Add(new KeyValuePair<string, string>(joint.JointType.ToString(), s_));
+                        }
+                        string s = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
+
+
+                        bodyData.Rows.Add(s);
                     }
-                    string s = string.Format("{0},{1},{2},", joint.Position.X, joint.Position.Y, joint.Position.Z);
-
-
-                    bodyData.Rows.Add(s);
                 }
 
                 writer.Write(line);

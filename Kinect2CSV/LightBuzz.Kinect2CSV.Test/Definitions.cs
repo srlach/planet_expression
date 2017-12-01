@@ -9,12 +9,12 @@ namespace LightBuzz.Kinect2CSV.Test
 {
     public class Definitions
     {
-        public int ID { get; set; }
+        public Int64 ID { get; set; }
         public string Gesture { get; set; }
 
         public Definitions() { }
 
-        public Definitions(int _ID, string _Gesture)
+        public Definitions(Int64 _ID, string _Gesture)
         {
             ID = _ID;
             Gesture = _Gesture;
@@ -24,7 +24,18 @@ namespace LightBuzz.Kinect2CSV.Test
         {
             // We change file extension here to make sure it's a .csv file.
             // TODO: Error checking.
+
+            if (!(File.Exists(System.IO.Path.ChangeExtension(filename, ".csv"))))
+            {
+                return null;
+            }
+
             string[] lines = File.ReadAllLines(System.IO.Path.ChangeExtension(filename, ".csv"));
+
+            if(lines == null)
+            {
+                return null;
+            }
 
             // lines.Select allows me to project each line as a Person. 
             // This will give me an IEnumerable<Person> back.
@@ -32,7 +43,7 @@ namespace LightBuzz.Kinect2CSV.Test
             {
                 string[] data = line.Split(',');
                 // We return a person with the data in order.
-                return new Definitions(Convert.ToInt32(data[0]), data[1]);
+                return new Definitions(Convert.ToInt64(data[0]), data[1]);
             });
         }
     }

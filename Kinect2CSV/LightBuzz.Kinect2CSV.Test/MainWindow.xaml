@@ -25,7 +25,7 @@
                 </Grid.RowDefinitions>
 
                 <WebBrowser x:Name="webBrowser" Grid.RowSpan="3" Margin="0 5 0 0"></WebBrowser>
-                <TextBox x:Name="inputQuery" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Center" IsReadOnly="True" Height="100" Margin="0 0 5 0"></TextBox>
+                <TextBox x:Name="inputQuery" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Center" IsReadOnly="True" Height="100" Margin="0 0 5 0" FontSize="14"></TextBox>
             </Grid>
             
             <Grid Grid.Column="1">
@@ -42,7 +42,7 @@
                                     <Setter Property="IsHitTestVisible" Value="False"/>
                                 </Style>
                             </GridView.ColumnHeaderContainerStyle>
-                            <GridViewColumn Header="ID" x:Name="col1" Width="60" DisplayMemberBinding="{Binding Path=ID}"/>
+                            <GridViewColumn Header="ID" x:Name="col1" Width="100" DisplayMemberBinding="{Binding Path=ID}"/>
                             <GridViewColumn Header="Gesture" Width="{Binding ElementName=helperField, Path=ActualWidth}" 
                                         DisplayMemberBinding="{Binding Path=Gesture}"/>
                         </GridView>
@@ -113,8 +113,9 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
 
-            <TextBox x:Name="inputText" Grid.Column="0" Text="Enter gesture classifier..." Height="25" HorizontalAlignment="Stretch" VerticalAlignment="Center" FontSize="14" VerticalContentAlignment="Center"/>
+            <TextBox x:Name="inputText" Grid.Column="0" Text="Enter gesture classifier..." Height="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Center" FontSize="14" VerticalContentAlignment="Center"/>
             <Button Grid.Column="3" Content="Start" Height="Auto" Width="70" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10 10 0 10" Click="Button_Click"/>
+            <Button Grid.Column="1" Content="Secret" Height="Auto" Width="70" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10 10 0 10" Click="Button_classifyClick"/>
             <Button Grid.Column="3" Content="Train" Height="Auto" Width="70" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10 10 80 10" Click="Button_trainClick"/>
             <TextBlock Grid.Column="2" x:Name="recordStatusText" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0 0 0 10"></TextBlock>
             <TextBlock Grid.Column="1" x:Name="statusBarText" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 0 10"></TextBlock>

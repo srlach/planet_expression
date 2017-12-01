@@ -21,3 +21,11 @@ C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2
 C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.csprojResolveAssemblyReference.cache
 C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.dll
 C:\Users\Stewart\Downloads\planet_expression-master\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.pdb
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\bin\Debug\LightBuzz.Kinect2CSV.dll
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\bin\Debug\LightBuzz.Kinect2CSV.pdb
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\bin\Debug\Microsoft.Kinect.dll
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\bin\Debug\Microsoft.Kinect.xml
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.csprojResolveAssemblyReference.cache
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.csproj.CoreCompileInputs.cache
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.dll
+C:\Users\lach225\Downloads\planet_expression-yuh\planet_expression-yuh\Kinect2CSV\LightBuzz.Kinect2CSV\obj\Debug\LightBuzz.Kinect2CSV.pdb

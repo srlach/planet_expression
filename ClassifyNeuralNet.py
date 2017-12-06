@@ -19,16 +19,16 @@ def classify(file):
         data.append(temp)
 
     data = np.array(data)
+    docs = data[:,1:]
 
     clf = joblib.load('NeuralNetworks.pkl')
     
-    doc_test = data
+    doc_test = docs
 
     predicted = clf.predict(doc_test)
    
     for i in range(len(data)):
         print "TestSample: %s ClassLabel: %s PredictedClassLabel: %s" % (i,int(data[i][0]),int(predicted[i]))
-
 
 def main(file):
     classify(file)

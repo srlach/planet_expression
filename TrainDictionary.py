@@ -30,16 +30,18 @@ def train(data):
         data.append(temp)
 
     data = np.array(data)
+    
+    docs = data[:,1:]
 
     label = data[:,0]
 
-    ada_clf = AdaBoostClassifier().fit(data,label)
-    sgd_clf = SGDClassifier(max_iter=5,tol=None).fit(data, label)
-    svm_clf = svm.SVC().fit(data, label)
-    lr_clf = LogisticRegression().fit(data, label)
-    knn_clf = KNeighborsClassifier().fit(data, label)
-    dt_clf = DecisionTreeClassifier().fit(data, label)
-    nn_clf = MLPClassifier().fit(data, label)
+    ada_clf = AdaBoostClassifier().fit(docs,label)
+    sgd_clf = SGDClassifier(max_iter=5,tol=None).fit(docs, label)
+    svm_clf = svm.SVC().fit(docs, label)
+    lr_clf = LogisticRegression().fit(docs, label)
+    knn_clf = KNeighborsClassifier().fit(docs, label)
+    dt_clf = DecisionTreeClassifier().fit(docs, label)
+    nn_clf = MLPClassifier().fit(docs, label)
 
     joblib.dump(ada_clf, 'ADA.pkl')
     joblib.dump(sgd_clf, 'SGD.pkl')
@@ -49,7 +51,7 @@ def train(data):
     joblib.dump(dt_clf, 'DecisionTree.pkl')
     joblib.dump(nn_clf, 'NeuralNetworks.pkl')
     
-    doc_test = data
+    doc_test = docs
     target_test = label
 
     predicted1 = ada_clf.predict(doc_test)
@@ -68,8 +70,8 @@ def train(data):
     print "accuracy Decision Tree: ", np.mean(predicted6 == target_test)
     print "accuracy Neural Networks: ", np.mean(predicted7 == target_test)
 
-    for i in range(len(data)):
-        print "TestSample: %s ClassLabel: %s PredictedClassLabel: %s" % (i,int(data[i][0]),int(predicted1[i]))
+    # for i in range(len(data)):
+    #    print "TestSample: %s ClassLabel: %s PredictedClassLabel: %s" % (i,int(data[i][0]),int(predicted1[i]))
 
 def main(file):
     print("Training...")

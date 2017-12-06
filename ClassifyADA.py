@@ -19,10 +19,11 @@ def classify(file):
         data.append(temp)
 
     data = np.array(data)
+    docs = data[:,1:]
 
     clf = joblib.load('ADA.pkl')
     
-    doc_test = data
+    doc_test = docs
 
     predicted = clf.predict(doc_test)
    
